@@ -117,8 +117,8 @@ export function InviteMemberForm() {
             <SelectValue placeholder="Select a role" />
           </SelectTrigger>
           <SelectContent className="z-100">
-            <SelectItem value="admin">Admin</SelectItem>
-            <SelectItem value="project_manager">Project Manager</SelectItem>
+            <SelectItem value="owner">Owner</SelectItem>
+            <SelectItem value="manager">Manager</SelectItem>
             <SelectItem value="member">Member</SelectItem>
           </SelectContent>
         </Select>
