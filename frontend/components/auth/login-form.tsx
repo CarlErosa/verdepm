@@ -2,10 +2,12 @@
 
 import type React from "react";
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useSearchParams } from "next/navigation";
 import { Loader2, AlertCircle, Mail, Lock } from "lucide-react";
 import { Login } from "@/app/login/actions";
-import { loginSchema } from "@/types/auth";
+import { loginSchema, type LoginInput } from "@/types/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,38 +16,30 @@ import { Checkbox } from "@/components/ui/checkbox";
 export function LoginForm() {
   const searchParams = useSearchParams();
   const errorMessage = searchParams.get("message");
-  const [isLoading, setIsLoading] = useState(false);
-  const [errors, setErrors] = useState<{
-    email?: string[];
-    password?: string[];
-  }>({});
 
-  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setIsLoading(true);
-    setErrors({});
+  type FormValues = LoginInput & { remember?: boolean };
 
-    const formData = new FormData(event.currentTarget);
-    const email = formData.get("email") as string;
-    const password = formData.get("password") as string;
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<FormValues>({ resolver: zodResolver(loginSchema) });
 
-    const result = loginSchema.safeParse({ email, password });
-    if (!result.success) {
-      setIsLoading(false);
-      setErrors(result.error.flatten().fieldErrors);
-      return;
-    }
+  async function onSubmit(data: FormValues) {
+    const formData = new FormData();
+    formData.append("email", data.email);
+    formData.append("password", data.password);
+    if (data.remember) formData.append("remember", String(data.remember));
 
     try {
       await Login(formData);
     } catch {
-    } finally {
-      setIsLoading(false);
+      // server-side redirect will handle errors
     }
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
       {/* Error Message Alert */}
       {errorMessage && (
         <div
@@ -58,82 +52,85 @@ export function LoginForm() {
       )}
 
       {/* Email Field */}
-      <div className="space-y-2">
+      <div className="space-y-2.5">
         <Label
           htmlFor="email"
-          className="text-sm font-semibold text-gray-700 dark:text-gray-200"
+          className="text-sm font-semibold text-gray-800 dark:text-gray-100 tracking-tight"
         >
           Email address
         </Label>
-        <div className="relative">
-          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-gray-500" />
+        <div className="relative group">
+          <Mail className={`absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 transition-colors duration-200 ${
+            errors.email ? "text-red-500 dark:text-red-400" : "text-gray-400 dark:text-gray-500 group-focus-within:text-emerald-500 dark:group-focus-within:text-emerald-400"
+          }`} />
           <Input
             id="email"
-            name="email"
+            {...register("email")}
             type="email"
             placeholder="Enter your email"
-            required
-            disabled={isLoading}
-            className={`pl-11 h-11 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700 focus:border-emerald-500 focus:ring-emerald-500 transition-all ${
+            disabled={isSubmitting}
+            className={`pl-11 h-12 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-600 focus:border-emerald-500 dark:focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:focus:ring-emerald-500/30 shadow-sm transition-all duration-200 ${
               errors.email
-                ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                ? "border-red-500 dark:border-red-500 focus:border-red-500 focus:ring-red-500/20 dark:focus:ring-red-500/30 bg-red-50/50 dark:bg-red-950/10 hover:border-red-600"
                 : ""
             }`}
           />
         </div>
-        {errors.email && (
-          <div className="flex items-center gap-1.5 text-red-600 dark:text-red-400">
-            <AlertCircle className="h-4 w-4" />
-            <p className="text-sm font-medium">{errors.email[0]}</p>
+        {errors.email?.message && (
+          <div className="flex items-center gap-2 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 px-3 py-2 rounded-md border border-red-200 dark:border-red-800/50 animate-in fade-in-50 slide-in-from-top-1 duration-200">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            <p className="text-xs font-medium">{errors.email?.message}</p>
           </div>
         )}
       </div>
 
       {/* Password Field */}
-      <div className="space-y-2">
+      <div className="space-y-2.5">
         <div className="flex items-center justify-between">
           <Label
             htmlFor="password"
-            className="text-sm font-semibold text-gray-700 dark:text-gray-200"
+            className="text-sm font-semibold text-gray-800 dark:text-gray-100 tracking-tight"
           >
             Password
           </Label>
         </div>
-        <div className="relative">
-          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-gray-500" />
+        <div className="relative group">
+          <Lock className={`absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 transition-colors duration-200 ${
+            errors.password ? "text-red-500 dark:text-red-400" : "text-gray-400 dark:text-gray-500 group-focus-within:text-emerald-500 dark:group-focus-within:text-emerald-400"
+          }`} />
           <Input
             id="password"
-            name="password"
+            {...register("password")}
             type="password"
             placeholder="Enter your password"
-            required
-            disabled={isLoading}
-            className={`pl-11 h-11 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700 focus:border-emerald-500 focus:ring-emerald-500 transition-all ${
+            disabled={isSubmitting}
+            className={`pl-11 h-12 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-600 focus:border-emerald-500 dark:focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:focus:ring-emerald-500/30 shadow-sm transition-all duration-200 ${
               errors.password
-                ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                ? "border-red-500 dark:border-red-500 focus:border-red-500 focus:ring-red-500/20 dark:focus:ring-red-500/30 bg-red-50/50 dark:bg-red-950/10 hover:border-red-600"
                 : ""
             }`}
           />
         </div>
-        {errors.password && (
-          <div className="flex items-center gap-1.5 text-red-600 dark:text-red-400">
-            <AlertCircle className="h-4 w-4" />
-            <p className="text-sm font-medium">{errors.password[0]}</p>
+        {errors.password?.message && (
+          <div className="flex items-center gap-2 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 px-3 py-2 rounded-md border border-red-200 dark:border-red-800/50 animate-in fade-in-50 slide-in-from-top-1 duration-200">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            <p className="text-xs font-medium">{errors.password?.message}</p>
           </div>
         )}
       </div>
 
       {/* Remember Me */}
-      <div className="flex items-center justify-between pt-1">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between pt-2">
+        <div className="flex items-center gap-2.5 group/remember">
           <Checkbox
             id="remember"
-            disabled={isLoading}
-            className="data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600"
+            {...register("remember")}
+            disabled={isSubmitting}
+            className="data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600 hover:border-emerald-500 dark:hover:border-emerald-500 transition-colors"
           />
           <label
             htmlFor="remember"
-            className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer select-none"
+            className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer select-none group-hover/remember:text-gray-900 dark:group-hover/remember:text-gray-100 transition-colors"
           >
             Remember me
           </label>
@@ -143,10 +140,10 @@ export function LoginForm() {
       {/* Submit Button */}
       <Button
         type="submit"
-        className="w-full h-11 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white font-semibold shadow-lg shadow-emerald-500/30 transition-all duration-200 hover:shadow-xl hover:shadow-emerald-500/40"
-        disabled={isLoading}
+        className="w-full h-12 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white font-semibold shadow-lg shadow-emerald-500/30 transition-all duration-200 hover:shadow-xl hover:shadow-emerald-500/40 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
+        disabled={isSubmitting}
       >
-        {isLoading ? (
+        {isSubmitting ? (
           <>
             <Loader2 className="mr-2 h-5 w-5 animate-spin" />
             Signing in...
